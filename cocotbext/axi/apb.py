@@ -70,8 +70,8 @@ class ApbReadResp(NamedTuple):
 
 class ApbBus(Bus):
 
-    _signals = ["paddr", "psel", "penable", "pwrite", "pwdata", "pstrb", "pready", "prdata"]
-    _optional_signals = ["pprot", "pslverr"]
+    _signals = ["paddr", "psel", "penable", "pwrite", "pwdata", "pready", "prdata"]
+    _optional_signals = ["pprot", "pslverr", "pstrb"]
 
     def __init__(self, entity=None, prefix=None, **kwargs):
         super().__init__(entity, prefix, self._signals, optional_signals=self._optional_signals, **kwargs)
@@ -370,9 +370,6 @@ class ApbMaster(ApbPause, Region, Reset):
                     self.log.info("Read start addr: 0x%08x prot: %s length: %d",
                             cmd.address, cmd.prot, cmd.length)
 
-            await clock_edge_event
-            self.bus.psel.value = True
-
             for k in range(cycles):
                 start = 0
                 stop = self.byte_lanes
@@ -399,17 +396,20 @@ class ApbMaster(ApbPause, Region, Reset):
                 while self.pause:
                     await clock_edge_event
 
-                await clock_edge_event
-
+                self.bus.psel.value = True
                 if k == 0:
                     self.bus.paddr.value = cmd.address
                 else:
                     self.bus.paddr.value = word_addr + k*self.byte_lanes
-                self.bus.pprot.value = cmd.prot
-                self.bus.penable.value = True
+                if self.pprot_present:
+                    self.bus.pprot.value = cmd.prot
                 self.bus.pwrite.value = pwrite
                 self.bus.pwdata.value = val
-                self.bus.pstrb.value = strb
+                if self.pstrb_present:
+                    self.bus.pstrb.value = strb
+
+                await clock_edge_event
+                self.bus.penable.value = True
 
                 await clock_edge_event
 
