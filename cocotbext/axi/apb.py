@@ -70,8 +70,8 @@ class ApbReadResp(NamedTuple):
 
 class ApbBus(Bus):
 
-    _signals = ["paddr", "psel", "penable", "pwrite", "pwdata", "pstrb", "pready", "prdata"]
-    _optional_signals = ["pprot", "pslverr"]
+    _signals = ["paddr", "psel", "penable", "pwrite", "pwdata", "pready", "prdata"]
+    _optional_signals = ["pprot", "pslverr", "pstrb"]
 
     def __init__(self, entity=None, prefix=None, **kwargs):
         super().__init__(entity, prefix, self._signals, optional_signals=self._optional_signals, **kwargs)
@@ -401,11 +401,12 @@ class ApbMaster(ApbPause, Region, Reset):
                     self.bus.paddr.value = cmd.address
                 else:
                     self.bus.paddr.value = word_addr + k*self.byte_lanes
-                if (self.pprot_present):
+                if self.pprot_present:
                     self.bus.pprot.value = cmd.prot
                 self.bus.pwrite.value = pwrite
                 self.bus.pwdata.value = val
-                self.bus.pstrb.value = strb
+                if self.pstrb_present:
+                    self.bus.pstrb.value = strb
 
                 await clock_edge_event
                 self.bus.penable.value = True
